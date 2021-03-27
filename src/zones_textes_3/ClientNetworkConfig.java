@@ -1,4 +1,4 @@
-package zones_textes_1;
+package zones_textes_3;
 
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -15,12 +15,9 @@ public class ClientNetworkConfig {
     private Connection connection;
     private Channel channel;
     private String outgoingQueue;
+    private String handShakeQueue = "handshake-queue" ;
     private String host = "localhost";
 
-    private String updateExchange = "update-exchange" ;
-    private Connection updateConnection;
-    private Channel updateChannel ;
-    private String updateQueue ;
 
     public ClientNetworkConfig(String queueName, ClientView clientView) {
         this.outgoingQueue = queueName;
@@ -55,14 +52,24 @@ public class ClientNetworkConfig {
     public void initOutgoingConnection( ConnectionFactory factory) throws Exception {
         connection = factory.newConnection();
         channel = connection.createChannel();
+        this.sendQueueName() ;
         channel.queueDeclare(outgoingQueue, false, false, false, null);
-
-        System.out.println("Ready to sent messages from "+ outgoingQueue);
+        System.out.println("Ready to send messages from "+ outgoingQueue);
     }
 
-    public void publishMessage(String message) {
+
+    private  void sendQueueName ()
+    {
         try {
-            this.channel.basicPublish("", outgoingQueue, null, message.getBytes(StandardCharsets.UTF_8));
+            this.channel.basicPublish("", handShakeQueue, null,outgoingQueue.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void publishMessage(byte [] byteArray) {
+        try {
+            this.channel.basicPublish("", outgoingQueue, null,byteArray);
         } catch (IOException e) {
             e.printStackTrace();
         }

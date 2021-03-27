@@ -1,4 +1,4 @@
-package zones_textes_1;
+package zones_textes_2;
 
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -61,15 +61,12 @@ public class ServerNetworkConfig {
     }
 
     private void initIncomingConnection(ConnectionFactory factory, String queueName) {
-
-
         try {
             channel.queueDeclare(queueName, false, false, false, null);
 
             DeliverCallback ingoingCallback = (consumerTag, delivery) -> {
-                String message = new String(delivery.getBody(), "UTF-8");
-                System.out.println(" [x] Received '" + message + "' from " + queueName);
-                serverView.updateText(queueName.equals("incoming-text1")?1:2,message );
+                byte[] byteArray = delivery.getBody();
+                serverView.updateText(queueName.equals("incoming-text1")?1:2,byteArray );
             };
 
             channel.basicConsume(queueName, true, ingoingCallback, consumerTag -> {

@@ -1,9 +1,10 @@
-package zones_textes_1;
+package zones_textes_3;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.text.BadLocationException;
 import java.awt.*;
 import java.awt.event.*;
 
@@ -19,12 +20,12 @@ public class ClientView extends JFrame {
     DocumentListener textAreaListener = new DocumentListener() {
         @Override
         public void insertUpdate(DocumentEvent e) {
-            onTextChange();
+            onTextChange(e, 1);
         }
 
         @Override
         public void removeUpdate(DocumentEvent e) {
-            onTextChange();
+            onTextChange(e, -1);
         }
 
         @Override
@@ -36,37 +37,51 @@ public class ClientView extends JFrame {
     private ClientNetworkConfig networkConfig;
 
 
+    // each setText() will trigger this event
+    private void onTextChange(DocumentEvent e, int modif) {
 
-    // each setText() will trigger this event , we added a flag to disable it when we update via network
-    private void onTextChange() {
-        this.sendText(textArea.getText());
+
+        String message = "";
+        int offset = e.getOffset();
+        int modifLength = e.getLength();
+
+        if (modif == 1) {
+            try {
+                message = textArea.getText(e.getOffset(), e.getLength());
+            } catch (BadLocationException badLocationException) {
+                badLocationException.printStackTrace();
+            }
+        }
+
+        MessageObject messageObject = new MessageObject(message,modifLength,offset, modif);
+
+        this.sendMessageObject(messageObject);
     }
 
 
+    private void sendMessageObject(MessageObject messageObject) {
 
-    private void sendText(String newText) {
-        System.out.println("'" + newText + "' Sent via the Client View");
-        networkConfig.publishMessage(newText);
+        networkConfig.publishMessage(MessageOperations.getByteArray(messageObject));
 
     }
 
     public ClientView(String queueName) {
-        this.setTitle("Client");
+        this.setTitle(queueName);
 
         contentPane = new JPanel();
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
         contentPane.setLayout(new BorderLayout(0, 0));
         setContentPane(contentPane);
 
-        textArea =new JTextArea(10,50);
+        textArea = new JTextArea(10, 50);
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
-        textArea.setBorder(BorderFactory.createLineBorder(Color.BLACK)) ;
+        textArea.setBorder(BorderFactory.createLineBorder(Color.BLACK));
 
         contentPane.add(textArea);
 
         // network configuration
-        this.networkConfig = new ClientNetworkConfig(queueName,this);
+        this.networkConfig = new ClientNetworkConfig(queueName, this);
         networkConfig.initConnection();
         // end network configuration
 
@@ -96,7 +111,7 @@ public class ClientView extends JFrame {
 
     public static void main(String[] args) {
 
-        String queueName = (args.length != 0) ? args[0] : "incoming-text1";
+        String queueName = (args.length != 0) ? args[0] : "queue-1";
         ClientView app = new ClientView(queueName);
         app.pack();
         app.setVisible(true);

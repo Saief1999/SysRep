@@ -1,4 +1,4 @@
-package zones_textes_1;
+package zones_textes_2;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -20,15 +20,48 @@ public class ServerView extends JFrame{
     private ServerNetworkConfig networkConfig ;
 
 
-    public void updateText(int fieldNumber,String message )
+
+    String calculateNewText(String oldText , MessageObject messageObject)
     {
+
+        String message =oldText;
+        int offset = messageObject.getOffset();
+
+        if (messageObject.getOperationType() == 1) // insertion
+        {
+            String addedMessage = messageObject.getMessage();
+            try {
+                String messagePart1 = (offset !=0 )?message.substring(0, offset):"" ;
+                System.out.println("part1 : "+messagePart1) ;
+                System.out.println("added message : "+addedMessage ) ;
+                String messagePart2 = (message.length()!=0 && offset != message.length())?message.substring(offset, message.length()):"";
+                System.out.println("part2 : "+messagePart2) ;
+                message =  messagePart1+ addedMessage + messagePart2 ;
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+            }
+        else { // deletion
+            int deleteLength = messageObject.getLength() ;
+            String messagePart1 = (offset !=0 )?message.substring(0, offset):"" ;
+            String messagePart2 =message.substring(offset+deleteLength, message.length());
+            message =  messagePart1+ messagePart2 ;
+        }
+        return message;
+    }
+
+    public void updateText(int fieldNumber,byte[] array )
+    {
+        MessageObject messageObject= MessageOperations.deserialize(array) ;
         if (fieldNumber ==1 )
         {
-            textArea1.setText(message);
+            textArea1.setText(calculateNewText(textArea1.getText(),messageObject));
         }
         else
         {
-            textArea2.setText(message);
+            textArea2.setText(calculateNewText(textArea2.getText(),messageObject));
         }
     }
     public ServerView() {

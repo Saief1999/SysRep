@@ -1,21 +1,23 @@
-package zones_textes_1;
+package zones_textes_3;
 
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
 
+import java.awt.*;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeoutException;
 
 public class ServerNetworkConfig {
-    private  String QUEUE1 = "incoming-text1"; // listens for incoming messages from Client 1
-    private  String QUEUE2 = "incoming-text2"; // listens for incoming messages from Client 2
 
+
+
+    private String handShakeQueue = "handshake-queue" ;
     private ServerView serverView ;
     Connection connection ;
     Channel channel ;
-
 
     public void closeServer()
     {
@@ -33,13 +35,7 @@ public class ServerNetworkConfig {
     public ServerNetworkConfig(ServerView serverView )
     {
         this.serverView = serverView ;
-        setQueueNames("incoming-text1","incoming-text2");
-
         this.initGlobalSettings();
-    }
-    private  void setQueueNames(String queueName1, String queueName2) {
-        QUEUE1 = queueName1;
-        QUEUE2 = queueName2;
     }
 
     private void initGlobalSettings() {
@@ -53,23 +49,17 @@ public class ServerNetworkConfig {
         } catch (TimeoutException e) {
             e.printStackTrace();
         }
-
-        initIncomingConnection(factory, QUEUE1);
-        initIncomingConnection(factory, QUEUE2);
-        System.out.println("Listening to messages... ( CTRL+C to Cancel )");
-
+        initIncomingHandshake(factory) ;
+        System.out.println("Connection opened, waiting for Handshakes... ") ;
     }
 
     private void initIncomingConnection(ConnectionFactory factory, String queueName) {
-
-
         try {
             channel.queueDeclare(queueName, false, false, false, null);
 
             DeliverCallback ingoingCallback = (consumerTag, delivery) -> {
-                String message = new String(delivery.getBody(), "UTF-8");
-                System.out.println(" [x] Received '" + message + "' from " + queueName);
-                serverView.updateText(queueName.equals("incoming-text1")?1:2,message );
+                byte[] byteArray = delivery.getBody();
+                serverView.updateText(queueName,byteArray );
             };
 
             channel.basicConsume(queueName, true, ingoingCallback, consumerTag -> {
@@ -77,7 +67,33 @@ public class ServerNetworkConfig {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        System.out.println("Listening to messages from '"+queueName+"' ...");
     }
 
+    private void initIncomingHandshake(ConnectionFactory factory) {
+
+        try {
+            channel.queueDeclare(handShakeQueue, false, false, false, null);
+
+            DeliverCallback ingoingCallback = (consumerTag, delivery) -> {
+                String queueName = new String(delivery.getBody(), StandardCharsets.UTF_8);
+                addClient(factory,queueName);
+            };
+
+            channel.basicConsume(handShakeQueue, true, ingoingCallback, consumerTag -> {
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    private void addClient(ConnectionFactory factory , String queueName)
+    {
+
+        this.initIncomingConnection(factory,queueName);
+        this.serverView.addNewClientView(queueName); ;
+
+    }
 
 }

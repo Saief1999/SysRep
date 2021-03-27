@@ -1,4 +1,4 @@
-package zones_textes_1;
+package zones_textes_2;
 
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -17,7 +17,6 @@ public class ClientNetworkConfig {
     private String outgoingQueue;
     private String host = "localhost";
 
-    private String updateExchange = "update-exchange" ;
     private Connection updateConnection;
     private Channel updateChannel ;
     private String updateQueue ;
@@ -57,12 +56,12 @@ public class ClientNetworkConfig {
         channel = connection.createChannel();
         channel.queueDeclare(outgoingQueue, false, false, false, null);
 
-        System.out.println("Ready to sent messages from "+ outgoingQueue);
+        System.out.println("Ready to send messages from "+ outgoingQueue);
     }
 
-    public void publishMessage(String message) {
+    public void publishMessage(byte [] byteArray) {
         try {
-            this.channel.basicPublish("", outgoingQueue, null, message.getBytes(StandardCharsets.UTF_8));
+            this.channel.basicPublish("", outgoingQueue, null,byteArray);
         } catch (IOException e) {
             e.printStackTrace();
         }

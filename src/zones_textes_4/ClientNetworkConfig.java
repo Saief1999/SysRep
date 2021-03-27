@@ -1,11 +1,11 @@
-package zones_textes_1;
+package zones_textes_4;
 
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.DeliverCallback;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 public class ClientNetworkConfig {
 
@@ -17,13 +17,13 @@ public class ClientNetworkConfig {
     private String outgoingQueue;
     private String host = "localhost";
 
-    private String updateExchange = "update-exchange" ;
-    private Connection updateConnection;
-    private Channel updateChannel ;
-    private String updateQueue ;
+    private Connection incomingConnection;
+    private Channel incomingChannel ;
+    private String incomingQueue ;
 
-    public ClientNetworkConfig(String queueName, ClientView clientView) {
+    public ClientNetworkConfig(String queueName,String otherQueueName, ClientView clientView) {
         this.outgoingQueue = queueName;
+        this.incomingQueue = otherQueueName;
         this.clientView = clientView ;
     }
 
@@ -32,7 +32,9 @@ public class ClientNetworkConfig {
     {
         try {
             channel.close();
+            incomingChannel.close();
             connection.close();
+            incomingConnection.close() ;
         }
         catch (Exception e)
         {
@@ -46,6 +48,7 @@ public class ClientNetworkConfig {
             factory.setHost(this.host);
 
             initOutgoingConnection(factory);
+            initIncomingConnection(factory);
         } catch (Exception e) {
             e.printStackTrace();
             System.out.println(e.getMessage());
@@ -57,12 +60,30 @@ public class ClientNetworkConfig {
         channel = connection.createChannel();
         channel.queueDeclare(outgoingQueue, false, false, false, null);
 
-        System.out.println("Ready to sent messages from "+ outgoingQueue);
     }
 
-    public void publishMessage(String message) {
+    public void initIncomingConnection( ConnectionFactory factory) throws Exception {
+        incomingConnection = factory.newConnection();
+        incomingChannel = connection.createChannel();
+        channel.queueDeclare(incomingQueue, false, false, false, null);
         try {
-            this.channel.basicPublish("", outgoingQueue, null, message.getBytes(StandardCharsets.UTF_8));
+            channel.queueDeclare(incomingQueue, false, false, false, null);
+
+            DeliverCallback ingoingCallback = (consumerTag, delivery) -> {
+                byte[] byteArray = delivery.getBody();
+                clientView.updateText(byteArray );
+            };
+
+            channel.basicConsume(incomingQueue, true, ingoingCallback, consumerTag -> {
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void publishMessage(byte [] byteArray) {
+        try {
+            this.channel.basicPublish("", outgoingQueue, null,byteArray);
         } catch (IOException e) {
             e.printStackTrace();
         }
